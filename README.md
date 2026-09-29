@@ -66,7 +66,7 @@ CmsproWindowsxponline/
 │   ├── Admin/                 # 后台页面与设置、空间管理接口
 │   └── Api/V1/                # 桌面用接口：State/Fs/File/Archive/Recycle/Account/IE/...
 ├── Exceptions/                # StateException、BlobException（自带 render，映射 HTTP 语义）
-├── Frontend/                  # 前端源码（Next.js 工程）与素材来源说明
+├── Frontend/                  # 前端源码快照（仅 src/ 与 docs/，Next.js 工程配置文件未纳入）
 ├── Middleware/                # XP 管理员权限、XP 用户鉴权
 ├── Migrations/                # 4 个迁移文件
 ├── Models/                    # UserSpace、XpFile、XpUpload
@@ -118,6 +118,13 @@ CmsproWindowsxponline/
 | 免登录版 | `anonymous` | 任何访客（XP 帐户名+密码登录） | `anon/{帐户名}`，与 CMSPRO 用户体系脱钩 |
 
 三种模式互斥，切换不影响已存储的数据。
+
+## 源码仓库
+
+| 平台 | 地址 |
+|------|------|
+| Gitee | <https://gitee.com/holley/windowsxponline> |
+| GitHub | <https://github.com/rhl88/windowsxponline> |
 
 ## 文档
 
