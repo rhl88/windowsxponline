@@ -51,6 +51,9 @@
                     <button type="reset" class="layui-btn layui-btn-md layui-btn-primary">
                         <i class="layui-icon layui-icon-refresh"></i> 重置
                     </button>
+                    <button type="button" class="layui-btn layui-btn-md layui-btn-normal" id="btn-add-icon">
+                        <i class="layui-icon layui-icon-add-1"></i> 新增图标
+                    </button>
                 </div>
             </form>
         </div>
@@ -242,6 +245,11 @@ layui.use(['table', 'form', 'jquery', 'layer'], function () {
     form.on('submit(deskicon-query)', function (data) {
         table.reload('deskicon-table', { where: data.field, page: { curr: 1 } });
         return false;
+    });
+
+    // 新增图标按钮（搜索栏）
+    $('#btn-add-icon').on('click', function () {
+        openIconForm(null);
     });
 
     // 工具栏事件
