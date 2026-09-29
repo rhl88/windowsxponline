@@ -29,3 +29,9 @@ desktop.ini
 *.bak
 npm-debug.log*
 yarn-error.log*
+
+# TypeScript 增量构建缓存
+*.tsbuildinfo
+
+# Prisma 本地数据库（脚手架预留，XP 功能不依赖）
+Frontend/db/

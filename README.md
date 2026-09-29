@@ -33,7 +33,7 @@
 | PHP 扩展 | `zip` | **必需**：压缩与解压依赖 `ZipArchive` |
 | CMSPRO | >= 5.0.0 | 应用运行于其应用模块机制之上 |
 | 数据库 | MySQL >= 5.7 或 SQLite | 沿用框架默认连接 |
-| Node.js | >= 20 | 仅在需要重新构建前端产物时使用 |
+| Node.js | >= 20 | 前端工程构建所需（`Frontend/`）；仅使用已构建的 `Assets/` 时可不安装 |
 
 可选扩展：使用 OSS / COS 驱动时需 `composer require aliyuncs/oss-php-sdk` 或 `qcloud/cos-sdk-v5`。
 
@@ -66,7 +66,7 @@ CmsproWindowsxponline/
 │   ├── Admin/                 # 后台页面与设置、空间管理接口
 │   └── Api/V1/                # 桌面用接口：State/Fs/File/Archive/Recycle/Account/IE/...
 ├── Exceptions/                # StateException、BlobException（自带 render，映射 HTTP 语义）
-├── Frontend/                  # 前端源码快照（仅 src/ 与 docs/，Next.js 工程配置文件未纳入）
+├── Frontend/                  # 前端完整源码（Next.js 16 工程，可独立构建）
 ├── Middleware/                # XP 管理员权限、XP 用户鉴权
 ├── Migrations/                # 4 个迁移文件
 ├── Models/                    # UserSpace、XpFile、XpUpload
@@ -79,6 +79,31 @@ CmsproWindowsxponline/
 ├── ServiceProvider.php        # 应用注册
 └── manifest.json              # 应用元信息、权限、配置项、菜单声明
 ```
+
+## 前端工程
+
+`Frontend/` 是完整的 Next.js 16 工程源码，可独立构建：
+
+```bash
+cd Frontend
+npm install     # 或 bun install（仓库含 bun.lock）
+npm run dev     # 开发服务器，http://localhost:3000
+npm run build   # 生产构建
+npm run lint    # ESLint 检查
+```
+
+前端有两种发布形态，由 [next.config.ts](./Frontend/next.config.ts) 依据 `NEXT_PUBLIC_API_BASE` 切换：
+
+| 形态 | 触发条件 | 产物 | 数据来源 |
+|------|----------|------|----------|
+| 动态部署 | 默认 | `.next/standalone` | 同源 `/api/v1` mock 服务（`src/server/`） |
+| 静态发布 | `NEXT_PUBLIC_API_BASE=local` | `out/` | 浏览器内置 Local 引擎（localStorage） |
+
+本应用 `Assets/` 中的产物即静态发布形态，构建流程见 [scripts/build-static.sh](./Frontend/scripts/build-static.sh)：先跑 lint 与 `tsc` 质量门，再将 `src/app/api` 临时移出（静态导出不兼容服务端路由）后执行 `next build`。
+
+> **Windows 用户注意：** 源文件中 `src/lib/api/aux.ts` 已重命名为 `aux-api.ts`。`aux` 是 Windows 保留设备名，原名在 Windows 上无法创建或检出，重命名后引用同步更新，功能不受影响。
+
+前端工程自身的说明见 [Frontend/README-LOCAL.md](./Frontend/README-LOCAL.md)。
 
 ## 核心技术实现
 
