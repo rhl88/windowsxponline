@@ -2452,7 +2452,7 @@ Windows XP 打印队列复刻版
 
   /* 初始桌面图标数据（localStorage 未设置时使用） */
   var DEFAULT_ICONS = [
-    {id:1,name:'游戏',type:'frame',target:'https://game.gongheguozhihui.com/',icon_url:'/uploads/cmspro.windowsxponline/desktop_icons/2026/09/29/game-favicon.ico',window_width:1024,window_height:720,sort:100,status:1}
+    {id:1,name:'红色警戒2',type:'frame',target:'https://game.gongheguozhihui.com/',icon_url:'/apps/cmspro.windowsxponline/icons/game-favicon.ico',window_width:1020,window_height:760,sort:100,status:1}
   ];
 
   /** 读取后台下发的桌面图标数据；localStorage 未设置时返回初始数据 */

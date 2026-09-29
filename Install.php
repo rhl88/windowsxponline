@@ -5,6 +5,7 @@ namespace App\Apps\CmsproWindowsxponline;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Windows XP 在线版应用安装脚本
@@ -60,6 +61,7 @@ class Install
         $this->runMigrations();
         $this->cleanupLegacyConfigs();
         $this->syncMenuPermissionCodes();
+        $this->seedDesktopIcons();
     }
 
     /**
@@ -193,5 +195,43 @@ class Install
                 ->where('code', $menuCode)
                 ->update(['permission_code' => $permissionCode]);
         }
+    }
+
+    /**
+     * 播种桌面图标初始数据
+     *
+     * 新站点安装时，向 desktop_icons 表插入预设的桌面图标（如红色警戒2游戏），
+     * 使新装站点开箱即有桌面图标。图标文件随应用包发布（Assets/icons/），
+     * icon_url 使用 app 相对路径，兼容任意站点。
+     * 幂等：表已有数据时跳过，不影响已配置的图标。
+     */
+    protected function seedDesktopIcons(): void
+    {
+        $table = 'app_cmspro_windowsxponline_desktop_icons';
+
+        if (!Schema::hasTable($table)) {
+            return;
+        }
+
+        if (DB::table($table)->exists()) {
+            return;
+        }
+
+        $now = now()->format('Y-m-d H:i:s');
+
+        DB::table($table)->insert([
+            [
+                'name' => '红色警戒2',
+                'type' => 'frame',
+                'target' => 'https://game.gongheguozhihui.com/',
+                'icon_url' => '/apps/cmspro.windowsxponline/icons/game-favicon.ico',
+                'window_width' => 1020,
+                'window_height' => 760,
+                'sort' => 100,
+                'status' => 1,
+                'create_time' => $now,
+                'update_time' => $now,
+            ],
+        ]);
     }
 }
