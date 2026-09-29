@@ -12,7 +12,18 @@
 | 前端 | Next.js 16 + Tailwind 4 + TypeScript + Zustand（静态导出） |
 | 依赖框架 | CMSPRO >= 5.0.0 |
 | 运行模式 | 单机版 / 在线版 / 免登录版 |
+| 项目官网 | <https://www.cmspro.cn/apps/cmspro.windowsxponline> |
 | 在线演示 | <https://cmspro.byethost22.com/xp> |
+
+## 界面预览
+
+桌面多窗口——Internet Explorer 打开 CMSPRO 官网，任务管理器、Windows Media Player、控制面板、命令提示符与记事本同时运行：
+
+![Windows XP 在线版桌面多窗口](https://www.cmspro.cn/uploads/2026/09/28/2iA15S93oV5e5ZS5J0vXbrgpGjTda1bS8Mw8SReb.png)
+
+开始菜单——「所有程序」级联菜单展开，同时打开本地磁盘 (C:) 资源管理器：
+
+![Windows XP 在线版开始菜单与资源管理器](https://www.cmspro.cn/uploads/appstore/2026/09/28/yOVW43Z7Vhma0fYZ3SLXi0nC5z3gkypX1v0VVM98.png)
 
 ## 特性
 
