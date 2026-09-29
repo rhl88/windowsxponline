@@ -12,6 +12,7 @@
 | 前端 | Next.js 16 + Tailwind 4 + TypeScript + Zustand（静态导出） |
 | 依赖框架 | CMSPRO >= 5.0.0 |
 | 运行模式 | 单机版 / 在线版 / 免登录版 |
+| 在线演示 | <https://cmspro.byethost22.com/xp> |
 
 ## 特性
 
