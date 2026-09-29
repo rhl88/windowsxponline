@@ -40,6 +40,13 @@
                     "icon": "fa fa-hdd-o",
                     "path": "/admin/cmspro/windowsxponline/spaces",
                     "order": 3
+                },
+                {
+                    "code": "windowsxponline_deskicons",
+                    "title": "桌面图标",
+                    "icon": "fa fa-th-large",
+                    "path": "/admin/cmspro/windowsxponline/deskicons",
+                    "order": 4
                 }
             ]
         }
@@ -73,6 +80,10 @@
         {
             "code": "cmspro.windowsxponline.spaces",
             "name": "管理用户空间"
+        },
+        {
+            "code": "cmspro.windowsxponline.deskicons",
+            "name": "管理桌面图标"
         }
     ],
     "config_groups": [

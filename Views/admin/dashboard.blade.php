@@ -27,12 +27,13 @@
 <script src="{{ asset('CmsProUi/component/layui/layui.js') }}"></script>
 <script src="{{ asset('CmsProUi/component/pear/pear.js') }}"></script>
 <script>
-// 同域下 localStorage 共享，先设置 apiBase 再加载 iframe
+// 同域下 localStorage 共享，先设置 apiBase 与后台配置的桌面图标再加载 iframe
 (function() {
     var apiBase = '{{ $apiBase }}';
     var staticUrl = '{{ $staticUrl }}';
     try {
         localStorage.setItem('xp.apiBase', apiBase);
+        localStorage.setItem('xp.desktopIcons', @json($desktopIcons));
     } catch(e) {
         console.warn('设置 localStorage 失败:', e);
     }

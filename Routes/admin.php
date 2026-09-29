@@ -7,6 +7,7 @@
  */
 
 use App\Apps\CmsproWindowsxponline\Controllers\Admin\DashboardController;
+use App\Apps\CmsproWindowsxponline\Controllers\Admin\DesktopIconController;
 use App\Apps\CmsproWindowsxponline\Controllers\Admin\SettingController;
 use App\Apps\CmsproWindowsxponline\Controllers\Admin\SpaceController;
 use App\Apps\CmsproWindowsxponline\Middleware\EnsureXpAdminPermission;
@@ -26,3 +27,8 @@ Route::get('/settings', [SettingController::class, 'index'])
 Route::get('/spaces', [SpaceController::class, 'index'])
     ->middleware(EnsureXpAdminPermission::class . ':spaces')
     ->name('admin.cmspro.windowsxponline.spaces');
+
+// 桌面图标管理
+Route::get('/deskicons', [DesktopIconController::class, 'index'])
+    ->middleware(EnsureXpAdminPermission::class . ':deskicons')
+    ->name('admin.cmspro.windowsxponline.deskicons');

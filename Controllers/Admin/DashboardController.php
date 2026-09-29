@@ -2,6 +2,7 @@
 
 namespace App\Apps\CmsproWindowsxponline\Controllers\Admin;
 
+use App\Apps\CmsproWindowsxponline\Models\DesktopIcon;
 use App\Apps\CmsproWindowsxponline\Services\StorageManager;
 use Illuminate\Routing\Controller;
 
@@ -32,6 +33,7 @@ class DashboardController extends Controller
             'storageDriver' => $storageDriver,
             'staticUrl' => $staticUrl,
             'apiBase' => $apiBase,
+            'desktopIcons' => DesktopIcon::getDesktopItems(),
         ]);
     }
 }

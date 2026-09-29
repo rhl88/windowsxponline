@@ -24,9 +24,11 @@ CmsproWindowsxponline/
 │   │   ├── DashboardController.php    # 桌面入口
 │   │   ├── SettingController.php      # 设置页面
 │   │   ├── SpaceController.php        # 空间管理页面
+│   │   ├── DesktopIconController.php  # 桌面图标管理页面
 │   │   └── Api/                       # 后台 API
 │   │       ├── SettingApiController.php  # 配置 CRUD
-│   │       └── SpaceApiController.php    # 空间 CRUD
+│   │       ├── SpaceApiController.php    # 空间 CRUD
+│   │       └── DesktopIconApiController.php  # 桌面图标 CRUD + 图标上传
 │   ├── Api/V1/             # XP WebOS API 控制器
 │   │   ├── BaseController.php         # API 基类
 │   │   ├── SystemController.php       # 系统信息/重置
@@ -67,20 +69,26 @@ CmsproWindowsxponline/
 ├── Exceptions/
 │   ├── StateException.php          # 快照状态异常（自带 render，7 种 reason）
 │   └── BlobException.php           # blob/上传异常（自带 render，7 种 reason）
+├── Middleware/
+│   ├── EnsureXpAdminPermission.php  # 后台 API 权限校验（逐条指定权限码后缀）
+│   └── EnsureXpUserAuthenticated.php # 用户端 XP API 登录态校验
 ├── Models/
 │   ├── UserSpace.php       # 用户空间模型
 │   ├── XpFile.php          # blob 元数据模型
-│   └── XpUpload.php        # 分片上传会话模型
+│   ├── XpUpload.php        # 分片上传会话模型
+│   └── DesktopIcon.php     # 桌面图标模型
 ├── Migrations/
 │   ├── 2026_09_26_000001_create_user_spaces_table.php
 │   ├── 2026_09_26_000002_add_create_time_index_to_user_spaces_table.php
 │   ├── 2026_09_28_000001_create_files_table.php
-│   └── 2026_09_28_000002_create_uploads_table.php
+│   ├── 2026_09_28_000002_create_uploads_table.php
+│   └── 2026_09_29_000001_create_desktop_icons_table.php
 ├── Views/
 │   ├── admin/              # 后台视图
 │   │   ├── dashboard.blade.php  # 桌面入口页
 │   │   ├── settings.blade.php   # 应用设置页
-│   │   └── spaces.blade.php     # 空间管理页
+│   │   ├── spaces.blade.php     # 空间管理页
+│   │   └── deskicons.blade.php  # 桌面图标管理页
 │   └── user/              # 用户端视图
 │       └── desktop.blade.php    # 用户端桌面入口
 ├── Assets/                # XP WebOS 静态资源（前端构建产物，见第九章「前端产物与补丁机制」）
@@ -94,7 +102,7 @@ CmsproWindowsxponline/
 │   │   ├── WindowsxponlineSetup.php   # 建最小配置表 + 跑应用迁移 + flush 缓存
 │   │   ├── XpStateSandbox.php         # 注入内存驱动 + 伪造 admin 登录态 + 种配置
 │   │   └── InMemoryStorageDriver.php  # 内存存储驱动（快照可预置/回读）
-│   └── Feature/           # 15 个功能测试类，150 用例 / 579 断言
+│   └── Feature/           # 16 个功能测试类，170 用例 / 625 断言
 └── doc/                   # 应用文档
 ```
 
@@ -114,11 +122,12 @@ CmsproWindowsxponline/
 
 ### 3.2 权限体系
 
-manifest.json 声明 3 个权限：
+manifest.json 声明 4 个权限：
 
 - `cmspro.windowsxponline.access` — 访问 XP 在线版
 - `cmspro.windowsxponline.settings` — 管理 XP 应用设置
 - `cmspro.windowsxponline.spaces` — 管理用户空间
+- `cmspro.windowsxponline.deskicons` — 管理桌面图标
 
 后台路由组添加 `permission` 中间件，与框架级 `api/admin` 路由组保持一致。`CheckPermission` 中间件从 URL 推导权限码（格式 `admin.{module}.{action}`），权限码不存在于 `admin_permissions` 表则放行，超级管理员直接放行。
 
@@ -209,7 +218,27 @@ XP 前端调用 POST /api/.../v1/fs（创建文件）
 
 **右键「下载到本地(L)」**：blob 节点走 `GET /fs/blob/{blobId}` 触发浏览器下载（`upload-r3.js` 导出 `window.__xpUploadBridge = { download: downloadNode }`）；内嵌节点仍走前端 Blob 直存。
 
-### 4.5 压缩/解压流程（两段式写入 + 失败回滚）
+### 4.5 桌面图标下发流程
+
+```
+后台管理「桌面图标管理」页面配置图标（frame/web/path 三类）
+  → DesktopIconApiController CRUD → app_cmspro_windowsxponline_desktop_icons 表
+  → 用户访问桌面入口（DashboardController / User/DesktopController）
+    → DesktopIcon::getDesktopItems() 取启用图标列表
+    → Blade 模板注入 localStorage.setItem('xp.desktopIcons', @json($desktopIcons))
+      → 前端 XP WebOS 产物加载
+        → deskicons-r1.js（window.__xpDeskIcons）读取 localStorage
+        → 桌面 sys 数组展开 ...window.__xpDeskIcons.items(iconRenderer, openApp)
+          → iconRenderer 用 JSX 运行时创建 img 元素
+          → 双击图标调用 openApp()
+            · frame → openApp('xpframe', {src:target, w, h}, label)
+            · web   → openApp('ie', {url:target}, label)
+            · path  → openApp('explorer', {path:[target]}, label)
+```
+
+> **下发时机**：Blade 页面在 `<script>` 标签中同步写入 `localStorage`，早于 iframe 加载 XP WebOS 前端产物，确保 `deskicons-r1.js` 首次执行时数据已就绪。`xpframe` 组件通过锚点替换注入到 APP_REGISTRY，渲染无边框 iframe 窗口（保留标题栏拖动/最大化/最小化/关闭），`src` 来自 `win.props.src`。
+
+### 4.6 压缩/解压流程（两段式写入 + 失败回滚）
 
 ```
 右键「发送到 → 压缩(zipped)文件夹」/ WinRAR 窗口「添加到压缩文件」
@@ -352,7 +381,29 @@ XP 前端调用 POST /api/.../v1/fs（创建文件）
 
 > ⚠️ **索引名必须带表义前缀**：MySQL 索引名表内唯一，但 SQLite（测试用内存库）**全库唯一**，重名直接建表失败。
 
-**迁移执行机制**：`Install.php::runMigrations()` 用 `glob($migrationsPath . '/*.php')` 自动扫描 `Migrations/` 目录，按 `migrations` 表记录跳过已执行项，逐个 `require` 后调 `up()` 并插入记录；`rollbackMigrations()` 用 `array_reverse(glob(...))` 逆序调 `down()`。**新增迁移文件无需修改 `Install.php`**，应用升级时自动兜底建表。两个新迁移均带幂等保护（`if (Schema::hasTable(self::TABLE)) return;`），MySQL 下额外执行 `ALTER TABLE ... COMMENT` 补表注释。
+**迁移执行机制**：`Install.php::runMigrations()` 用 `glob($migrationsPath . '/*.php')` 自动扫描 `Migrations/` 目录，按 `migrations` 表记录跳过已执行项，逐个 `require` 后调 `up()` 并插入记录；`rollbackMigrations()` 用 `array_reverse(glob(...))` 逆序调 `down()`。**新增迁移文件无需修改 `Install.php`**，应用升级时自动兜底建表。各迁移均带幂等保护（`if (Schema::hasTable(self::TABLE)) return;`），MySQL 下额外执行 `ALTER TABLE ... COMMENT` 补表注释。
+
+### app_cmspro_windowsxponline_desktop_icons（桌面图标）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | bigint | 主键 |
+| name | varchar(100) | 图标显示名称 |
+| type | varchar(20) | 图标类型：`frame`（框架页面）/ `web`（网页快捷方式）/ `path`（路径快捷方式） |
+| target | varchar(500) | 目标地址：frame/web 为 URL，path 为本地路径 |
+| icon_url | varchar(255) | 图标文件 URL（相对路径，存 `public/uploads/` 下） |
+| window_width | int | 窗口宽度（像素），0 表示使用默认值 |
+| window_height | int | 窗口高度（像素），0 表示使用默认值 |
+| sort | int | 排序值（升序） |
+| status | tinyint | 状态（1=启用, 0=禁用） |
+| create_time | datetime | 创建时间 |
+| update_time | datetime | 更新时间 |
+
+模型 `DesktopIcon` 使用 `CREATED_AT='create_time'`、`UPDATED_AT='update_time'`，提供 `getDesktopItems()`（返回启用图标数组）和 `toDesktopItem()`（转为前端下发格式）。
+
+图标文件上传到 `public/uploads/cmspro.windowsxponline/desktop_icons/{Y/m/d}/` 目录，支持 ico/png/jpg/jpeg/gif/svg/bmp/webp 格式，单文件上限 2MB。因系统 `AttachmentService` 的图片扩展名白名单不含 `.ico`，故 API 控制器自行落盘、不入系统附件表。
+
+**安全防护**：`target` 字段按 `type` 区分校验——frame/web 类型须 `http(s)://` 或 `/` 开头，path 类型须 `/` 开头；拒绝 `javascript:`、`data:` 等伪协议注入。
 
 ## 七、视图规范
 
@@ -394,7 +445,7 @@ Blade 模板中 `<script type="text/html">` 块使用 `@verbatim ... @endverbati
 
 | 文件 | 字节数 | 角色 | 补丁内容 |
 |------|--------|------|----------|
-| `7f0bf4f0a6726f51.js` | 972258 | 主 chunk | 加载顺序修复 3 处行内替换；锚点补丁 pairs6（IE 主页 4 处）+ pairs7（快捷方式向导 2 处）+ pairs8（导入桥入口 1 处）+ pairs9（WinRAR 分发与右键菜单 6 处）；尾部追加 `wizard-r1.js`（`__xpShortcutWizard`）、`upload-r3.js`（`__xpUploadBridge`）、`winrar-r1.js`（`__xpWinrar`） |
+| `7f0bf4f0a6726f51.js` | 975336 | 主 chunk | 加载顺序修复 3 处行内替换；锚点补丁 pairs6（IE 主页 4 处）+ pairs7（快捷方式向导 2 处）+ pairs8（导入桥入口 1 处）+ pairs9（WinRAR 分发与右键菜单 6 处）+ pairs11（xpframe 组件注册 + 桌面图标注入 2 处）；尾部追加 `wizard-r1.js`（`__xpShortcutWizard`）、`upload-r3.js`（`__xpUploadBridge`）、`winrar-r1.js`（`__xpWinrar`）、`deskicons-r1.js`（`__xpDeskIcons`） |
 | `e01873ec359d331e.js` | 74245 | store chunk | 11 处 C 盘只读守卫（全部 fs 写动作入口） |
 | `f39f1fc36e603918.js` | 30873 | 路径 helper | D 盘帐户目录映射 + pairs10（压缩包类型识别与 blob 节点大小显示 2 处） |
 
@@ -410,28 +461,30 @@ Blade 模板中 `<script type="text/html">` 块使用 `@verbatim ... @endverbati
 - `p5.ps1`：加载顺序修复的三处行内替换（同款命中数校验）
 - `append.ps1 <Target> <Source> <BackupTag> <Guard>`：以 `Guard` 字符串（如 `xpup-style`）做幂等判断，未追加过才把 `Source` 拼到文件末尾
 - `mkcount.ps1 <Target> <Needle>`：实测某字符串在产物中的 ordinal 出现次数，用于**证明 marker 期望值**（不靠预估）
-- `apply-r1.ps1` / `apply-r2.ps1` / `apply-r3.ps1`：完整流水线——追加脚本先 `node --check` 自检 → 从 `storage/tmp/bak/` 的基线副本恢复目标 chunk（保证可重复执行）→ 打锚点补丁 → 追加模块 → 最终 `node --check` → 校验标记字符串出现次数 → 把 `p6.ps1`/`append.ps1` 产生的 `.bak` 移出公开 chunks 目录（末步输出 `BAK_LEFT=0` 为合格）
+- `apply-r1.ps1` / `apply-r2.ps1` / `apply-r3.ps1` / `apply-r4.ps1`：完整流水线——追加脚本先 `node --check` 自检 → 从 `storage/tmp/bak/` 的基线副本恢复目标 chunk（保证可重复执行）→ 打锚点补丁 → 追加模块 → 最终 `node --check` → 校验标记字符串出现次数 → 把 `p6.ps1`/`append.ps1` 产生的 `.bak` 移出公开 chunks 目录（末步输出 `BAK_LEFT=0` 为合格）
 
-`apply-r3.ps1` 的七步流水线（当前最新、也是唯一一次同时改两个 chunk）：
+`apply-r4.ps1` 的七步流水线（当前最新，在 r3 基础上新增 pairs11 + `deskicons-r1.js`，同样同时改主 chunk 和 helper）：
 
 ```
-① node --check upload-r3.js / winrar-r1.js          → UP_EXIT / WR_EXIT
+① node --check upload-r3.js / winrar-r1.js / deskicons-r1.js  → UP_EXIT / WR_EXIT / DI_EXIT
 ② 还原基线：主 chunk ← .r2.bak；helper ← .orig.bak   → RESTORED_MAIN / RESTORED_HELP
-③ 锚点补丁：p6 主chunk pairs8 / pairs9；p6 helper pairs10 → P8_EXIT / P9_EXIT / P10_EXIT
-④ 追加模块：append 主chunk upload-r3.js(xpup-style) / winrar-r1.js(xpwr-style) → AP_UP_EXIT / AP_WR_EXIT
+③ 锚点补丁：p6 主chunk pairs8 / pairs9 / pairs11；p6 helper pairs10 → P8_EXIT / P9_EXIT / P11_EXIT / P10_EXIT
+④ 追加模块：append 主chunk upload-r3.js(xpup-style) / winrar-r1.js(xpwr-style) / deskicons-r1.js(xpdesk-style) → AP_UP_EXIT / AP_WR_EXIT / AP_DI_EXIT
 ⑤ 终检：node --check 主chunk / helper               → NODE_MAIN / NODE_HELP + CHARS_*
-⑥ 11 项 marker 校验（CountOrdinal 精确计数，Expect 等值 / ExpectMin 下限）
+⑥ 14 项 marker 校验（CountOrdinal 精确计数，Expect 等值 / ExpectMin 下限）
 ⑦ 清理公开目录残留 .bak                              → BAK_LEFT=0；全绿输出 RESULT: ALL OK
 ```
 
-第 ⑥ 步的 11 项 marker（升级产物后重放必须逐项对齐）：
+第 ⑥ 步的 14 项 marker（升级产物后重放必须逐项对齐）：
 
 | marker | 目标 | 期望 |
 |--------|------|------|
 | `data-xp-cwd` | 主 | ≥ 2 |
-| `xpsw-style` / `xpup-style` / `xpwr-style` | 主 | 各 ≥ 1 |
+| `xpsw-style` / `xpup-style` / `xpwr-style` / `xpdesk-style` | 主 | 各 ≥ 1 |
 | `__xpUploadBridge` | 主 | == 4 |
 | `__xpWinrar` | 主 | == 11 |
+| `__xpDeskIcons` | 主 | == 6 |
+| `xpframe` | 主 | == 2 |
 | `下载到本地(L)` | 主 | == 2 |
 | `解压到当前文件夹` | 主 | == 3 |
 | `WinRAR 压缩文件` / `7-Zip 压缩文件` | helper | 各 == 1 |
@@ -445,12 +498,12 @@ Blade 模板中 `<script type="text/html">` 块使用 `@verbatim ... @endverbati
 | `7f0bf4f0a6726f51.js.ie.bak` | 879717 | 已含加载顺序修复 |
 | `7f0bf4f0a6726f51.js.r1.bak` | 879899 | 再含 IE 主页补丁（`apply-r1.ps1` 的恢复基线） |
 | `7f0bf4f0a6726f51.js.r1w.bak` | 879899 | 同上（wizard 阶段留存） |
-| `7f0bf4f0a6726f51.js.r2.bak` | 898614 | 再含快捷方式向导（`apply-r2.ps1` 与 **`apply-r3.ps1` 共同的恢复基线**） |
+| `7f0bf4f0a6726f51.js.r2.bak` | 898614 | 再含快捷方式向导（`apply-r2.ps1` → `apply-r4.ps1` **共同的恢复基线**） |
 | `7f0bf4f0a6726f51.js.r3.bak` | 898614 | 同上（r3 阶段留存） |
 | `f39f1fc36e603918.js.orig.bak` | 30750 | **helper 原始副本**（`apply-r3.ps1` 的恢复基线） |
 | `f39f1fc36e603918.js.r3.bak` | 30750 | 同上（r3 阶段留存） |
 
-锚点对目录（`storage/tmp/pairs*/`）：`pairs6`=4 对（IE 主页）、`pairs7`=2 对（快捷方式向导）、`pairs8`=1 对（导入桥入口，**r3 版已覆盖 r2 版**）、`pairs9`=6 对（WinRAR）、`pairs10`=2 对（helper）。
+锚点对目录（`storage/tmp/pairs*/`）：`pairs6`=4 对（IE 主页）、`pairs7`=2 对（快捷方式向导）、`pairs8`=1 对（导入桥入口，**r3 版已覆盖 r2 版**）、`pairs9`=6 对（WinRAR）、`pairs10`=2 对（helper）、`pairs11`=2 对（xpframe 注册 + 桌面图标注入）。
 
 **完整重放顺序**（升级前端产物后，从原始 chunk 起依次执行；前两步无包装脚本，需手工调用）：
 
@@ -460,9 +513,10 @@ Blade 模板中 `<script type="text/html">` 块使用 `@verbatim ... @endverbati
 3. apply-r1.ps1                                          → 快捷方式向导（pairs7 + wizard-r1.js）
 4. apply-r2.ps1                                          → 本地文件导入 r2（pairs8 旧版 + upload-r2.js）
 5. apply-r3.ps1                                          → blob 上传 r3 + WinRAR（pairs8/9/10 + upload-r3.js + winrar-r1.js）
+6. apply-r4.ps1                                          → 桌面图标注入（pairs11 + deskicons-r1.js）
 ```
 
-> 第 4、5 步实际可合并：`apply-r3.ps1` 第 ② 步就是从 `.r2.bak` 恢复主 chunk，即它已内含第 3 步的成果；`pairs8` 也已被 r3 版覆盖。因此**日常只需跑第 5 步**，第 1–4 步仅在需要从原始产物完整重建时执行。
+> 第 4–6 步实际可合并：`apply-r4.ps1` 第 ② 步就是从 `.r2.bak` 恢复主 chunk，即它已内含第 3–5 步的成果；`pairs8` 也已被 r3 版覆盖。因此**日常只需跑最后一步 `apply-r4.ps1`**，第 1–5 步仅在需要从原始产物完整重建时执行。
 
 > ⚠️ **`e01873ec359d331e.js`（store chunk）的补丁仍未保留重放资产**：11 处 C 盘只读守卫当时以临时命令直接写入，既无 `pairs` 锚点对目录，也无打补丁前的原始副本，因此**无法机械重放**，升级前端产物后须重新定位锚点手工改写。存活校验信号：store chunk 中 `本地磁盘 (C:)` 出现 23 次（含 11 处守卫）。
 >

@@ -2,6 +2,7 @@
 
 namespace App\Apps\CmsproWindowsxponline\Controllers\User;
 
+use App\Apps\CmsproWindowsxponline\Models\DesktopIcon;
 use Illuminate\Routing\Controller;
 
 /**
@@ -25,6 +26,7 @@ class DesktopController extends Controller
         return view('cmspro.windowsxponline::user.desktop', [
             'staticUrl' => $staticUrl,
             'apiBase' => $apiBase,
+            'desktopIcons' => DesktopIcon::getDesktopItems(),
         ]);
     }
 }

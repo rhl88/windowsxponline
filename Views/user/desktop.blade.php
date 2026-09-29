@@ -18,6 +18,7 @@
         var staticUrl = '{{ $staticUrl }}';
         try {
             localStorage.setItem('xp.apiBase', apiBase);
+            localStorage.setItem('xp.desktopIcons', @json($desktopIcons));
         } catch(e) {
             console.warn('设置 localStorage 失败:', e);
         }

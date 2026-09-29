@@ -210,6 +210,124 @@
 
 配额展示联动：`quota_mb`/`used_mb` 会动态注入桌面快照 `本地磁盘 (D:)` 节点的 `total`/`used` 字段（见 4.12），管理员调整配额后用户重新加载桌面即可在「我的电脑 → 本地磁盘 (D:) → 属性」看到新容量。
 
+### 3.3 桌面图标管理
+
+后台可管理的 XP 桌面图标，新增/修改图标无需重新编译前端产物。图标数据通过 `localStorage('xp.desktopIcons')` 下发到前端桌面渲染逻辑。
+
+**图标类型**：
+
+| 类型 | 说明 | target 格式 | 双击行为 |
+|------|------|-------------|----------|
+| `frame` | 框架页面 | http(s):// 或 / 开头的页面地址 | 打开无边框 iframe 窗口（保留标题栏拖动/最大化/最小化/关闭） |
+| `web` | 网页快捷方式 | http(s):// 或 / 开头的网址 | 以 IE 浏览器打开目标网址 |
+| `path` | 路径快捷方式 | 以 / 开头的桌面路径 | 以资源管理器打开目标路径 |
+
+> 安全防护：frame/web 类型的 target 仅允许 `http://`、`https://` 或站内 `/` 开头的地址，拒绝 `javascript:` 等伪协议注入；path 类型仅允许 `/` 开头的站内路径。
+
+#### GET /api/admin/cmspro/windowsxponline/deskicons
+
+获取桌面图标列表（分页）。
+
+**查询参数**：
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| keyword | string | 图标名称关键词（前缀匹配） |
+| type | string | 图标类型（web/frame/path） |
+| page | int | 页码 |
+| per_page | int | 每页条数（兼容 Layui 的 `limit` 参数） |
+
+**响应**：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "name": "游戏",
+        "type": "frame",
+        "target": "https://game.example.com/",
+        "icon_url": "/uploads/cmspro.windowsxponline/desktop_icons/2026/09/29/game-favicon.ico",
+        "window_width": 1024,
+        "window_height": 720,
+        "sort": 100,
+        "status": 1,
+        "create_time": "2026-09-29 10:00:00",
+        "update_time": "2026-09-29 10:00:00"
+      }
+    ],
+    "pagination": { "total": 1, "current_page": 1, "per_page": 15, "last_page": 1 }
+  }
+}
+```
+
+#### POST /api/admin/cmspro/windowsxponline/deskicons
+
+创建桌面图标。
+
+**请求体**（JSON）：
+
+```json
+{
+  "name": "游戏",
+  "type": "frame",
+  "target": "https://game.example.com/",
+  "icon_url": "/uploads/cmspro.windowsxponline/desktop_icons/2026/09/29/xxx.ico",
+  "window_width": 1024,
+  "window_height": 720,
+  "sort": 100,
+  "status": 1
+}
+```
+
+| 字段 | 类型 | 必填 | 校验 |
+|------|------|------|------|
+| name | string | 是 | 非空，≤100 字符 |
+| type | string | 是 | 枚举：web / frame / path |
+| target | string | 是 | ≤1024 字符；frame/web 须 http(s):// 或 / 开头，path 须 / 开头 |
+| icon_url | string | 否 | ≤500 字符，上传后回填 |
+| window_width | int | 否 | 320–4096，默认 1024 |
+| window_height | int | 否 | 320–4096，默认 720 |
+| sort | int | 否 | -999999 ~ 999999，默认 0，升序 |
+| status | int | 否 | 0=禁用 / 1=启用，默认 1 |
+
+#### POST /api/admin/cmspro/windowsxponline/deskicons/icon
+
+上传图标文件。支持 `ico/png/jpg/jpeg/gif/bmp/webp/svg`，上限 2 MB。
+
+> 说明：图标为应用私有资源且需支持 `.ico`（favicon），而系统附件服务（AttachmentService）的图片扩展名白名单不含 ico，故此处自行落盘到 `public/uploads/cmspro.windowsxponline/desktop_icons/{Y/m/d}/`，不入系统附件表。
+
+**请求**：`multipart/form-data`，字段 `icon` 为图标文件。
+
+**响应**：
+
+```json
+{
+  "code": 0,
+  "message": "上传成功",
+  "data": {
+    "url": "/uploads/cmspro.windowsxponline/desktop_icons/2026/09/29/abc123.ico",
+    "name": "favicon.ico",
+    "size": 27670
+  }
+}
+```
+
+创建图标时将返回的 `url` 填入 `icon_url` 字段。更新图标时若 `icon_url` 变更，旧图标文件自动清理。
+
+#### PUT /api/admin/cmspro/windowsxponline/deskicons/{id}
+
+更新桌面图标。请求体与创建相同，所有字段均需提供。
+
+#### DELETE /api/admin/cmspro/windowsxponline/deskicons/{id}
+
+删除桌面图标，同时清理图标文件。
+
+**数据下发机制**：DashboardController 和用户端 DesktopController 在渲染视图时调用 `DesktopIcon::getDesktopItems()` 获取启用图标列表，通过 `localStorage.setItem('xp.desktopIcons', @json($desktopIcons))` 注入页面，前端补丁脚本 `deskicons-r1.js` 从 localStorage 读取并展开为桌面图标。
+
 ## 四、XP WebOS API
 
 以下端点在单机版和在线版中行为一致，控制器通过 Auth 门面自动适配用户身份；免登录版（anonymous）复用在线版前缀，身份改为 Web 会话中的 XP 帐户（见 4.3）。

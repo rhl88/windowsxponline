@@ -49,6 +49,7 @@ class Install
         'windowsxponline_desktop' => 'cmspro.windowsxponline.access',
         'windowsxponline_settings' => 'cmspro.windowsxponline.settings',
         'windowsxponline_spaces' => 'cmspro.windowsxponline.spaces',
+        'windowsxponline_deskicons' => 'cmspro.windowsxponline.deskicons',
     ];
 
     /**

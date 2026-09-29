@@ -8,8 +8,8 @@
 
 通过 CMSPRO 后台「应用管理」安装本应用。安装流程由 `Install.php` 驱动：
 
-1. 执行数据库迁移：`runMigrations()` 用 `glob(Migrations/*.php)` 扫描全部迁移文件并逐个执行 `up()`，当前创建 4 项结构——`app_cmspro_windowsxponline_user_spaces`（用户空间配额）、`create_time` 索引、`app_cmspro_windowsxponline_files`（blob 元数据）、`app_cmspro_windowsxponline_uploads`（分片上传会话）。已执行的迁移按 `migrations` 表记录自动跳过，**新增迁移文件无需改 `Install.php`**
-2. 注册权限：将 manifest.json 声明的 3 个权限写入 `admin_permissions` 表
+1. 执行数据库迁移：`runMigrations()` 用 `glob(Migrations/*.php)` 扫描全部迁移文件并逐个执行 `up()`，当前创建 5 项结构——`app_cmspro_windowsxponline_user_spaces`（用户空间配额）、`create_time` 索引、`app_cmspro_windowsxponline_files`（blob 元数据）、`app_cmspro_windowsxponline_uploads`（分片上传会话）、`app_cmspro_windowsxponline_desktop_icons`（后台桌面图标）。已执行的迁移按 `migrations` 表记录自动跳过，**新增迁移文件无需改 `Install.php`**
+2. 注册权限：将 manifest.json 声明的 4 个权限写入 `admin_permissions` 表
 3. 注册菜单：将后台菜单和用户端菜单写入对应菜单表
 4. 初始化默认配置：写入 `config_items` 表（使用 `first()+update()`，已有配置不覆盖）
 
@@ -18,7 +18,7 @@
 ### 1.2 卸载
 
 卸载时清理：
-- 用户空间数据表、blob 元数据表、上传会话表（`rollbackMigrations()` 逆序 `glob` 扫描并执行 `down()`）
+- 用户空间数据表、blob 元数据表、上传会话表、桌面图标表（`rollbackMigrations()` 逆序 `glob` 扫描并执行 `down()`）
 - 权限记录
 - 菜单记录
 - 配置项记录
@@ -28,7 +28,7 @@
 
 `Install.php` 的 `upgrade()` 直接等价于重跑 `install()`：迁移、遗留配置清理、菜单权限码绑定三者均幂等，当前无按版本区间分支的增量迁移。配置项使用 `seedDefaultConfigs()` 补充新增配置项，已有配置值不覆盖。
 
-**升级后必须重放前端补丁**：`Assets/` 下的 Next.js 产物由构建生成，若重新构建或覆盖产物，所有 `apply-rN.ps1` 补丁会丢失，需按 architecture.md 9.3 的重放顺序恢复（日常只需跑最后一步 `apply-r3.ps1`）。
+**升级后必须重放前端补丁**：`Assets/` 下的 Next.js 产物由构建生成，若重新构建或覆盖产物，所有 `apply-rN.ps1` 补丁会丢失，需按 architecture.md 9.3 的重放顺序恢复（日常只需跑最后一步 `apply-r4.ps1`）。
 
 ## 二、配置说明
 
@@ -297,6 +297,7 @@
 | cmspro.windowsxponline.access | 访问 XP 在线版 | 访问应用后台页面 |
 | cmspro.windowsxponline.settings | 管理 XP 应用设置 | 管理应用配置 |
 | cmspro.windowsxponline.spaces | 管理用户空间 | 管理用户空间配额 |
+| cmspro.windowsxponline.deskicons | 管理桌面图标 | 管理后台桌面图标（CRUD + 图标上传） |
 
 后台路由组使用 `permission` 中间件，与框架级 `api/admin` 路由组配置一致。
 
@@ -461,14 +462,30 @@ SELECT code, value FROM config_items WHERE code LIKE 'app_cmspro_windowsxponline
 | 位置 | marker | 期望数量 |
 |------|--------|----------|
 | 主 chunk | `data-xp-cwd` | ≥ 2（`ExpectMin`） |
-| 主 chunk | `xpsw-style` / `xpup-style` / `xpwr-style` | 各 ≥ 1（`ExpectMin`） |
+| 主 chunk | `xpsw-style` / `xpup-style` / `xpwr-style` / `xpdesk-style` | 各 ≥ 1（`ExpectMin`） |
 | 主 chunk | `__xpUploadBridge` | 恰 4 |
 | 主 chunk | `__xpWinrar` | 恰 11 |
+| 主 chunk | `__xpDeskIcons` | 恰 6 |
+| 主 chunk | `xpframe` | 恰 2 |
 | 主 chunk | `下载到本地(L)` | 恰 2（资源管理器 + 桌面右键） |
 | 主 chunk | `解压到当前文件夹` | 恰 3（右键菜单 + 工具栏 + 菜单项） |
 | 路径 helper chunk | `WinRAR 压缩文件` / `7-Zip 压缩文件` / `t.bytes?t.bytes` | 各恰 1 |
 
-缺失时按 architecture.md 9.3 的重放顺序恢复（日常只需跑最后一步 `apply-r3.ps1`）。可用 `storage\tmp\mkcount.ps1` 统计各 marker 实际出现次数再与上表比对。
+缺失时按 architecture.md 9.3 的重放顺序恢复（日常只需跑最后一步 `apply-r4.ps1`）。可用 `storage\tmp\mkcount.ps1` 统计各 marker 实际出现次数再与上表比对。
+
+### Q19: 如何在桌面添加自定义图标？
+
+后台「XP 在线版 → 桌面图标管理」页面可新增/编辑/删除桌面图标，无需改代码或重新编译前端。支持三类图标：
+
+| 类型 | 说明 | 双击行为 |
+|------|------|----------|
+| frame（框架页面） | 以无边框 iframe 窗口打开指定页面（保留标题栏拖动/最大化/最小化/关闭） | `openApp('xpframe', {src, w, h}, label)` |
+| web（网页快捷方式） | 以 IE 浏览器打开指定网址 | `openApp('ie', {url}, label)` |
+| path（路径快捷方式） | 以资源管理器打开指定桌面路径 | `openApp('explorer', {path}, label)` |
+
+图标文件上传到 `public/uploads/cmspro.windowsxponline/desktop_icons/{Y/m/d}/`，支持 ico/png/jpg/jpeg/gif/svg/bmp/webp 格式，单文件上限 2MB。因系统 `AttachmentService` 的图片扩展名白名单不含 `.ico`，故图标上传由应用 API 自行落盘、不入系统附件表。
+
+图标数据通过 `DesktopIcon::getDesktopItems()` 取启用列表，Blade 模板注入 `localStorage('xp.desktopIcons')`，前端补丁脚本 `deskicons-r1.js`（`window.__xpDeskIcons`）读取后展开到桌面图标数组。
 
 ## 七、运行时文件
 
@@ -498,7 +515,7 @@ SELECT code, value FROM config_items WHERE code LIKE 'app_cmspro_windowsxponline
 框架 `phpunit.xml` 的 `testsuites` 仅含 `tests/Unit`、`tests/Feature`，**不包含应用目录**，因此应用测试必须用路径方式单独执行：
 
 ```bash
-# 全量（当前基线：150 用例 / 579 断言，约 15s）
+# 全量（当前基线：170 用例 / 625 断言，约 15s）
 php artisan test app/Apps/CmsproWindowsxponline/Tests/Feature --compact
 
 # 单个测试类
@@ -539,6 +556,7 @@ blob 对象与上传分片同样经 `StorageManager` 读写，故也由注入的
 | `ArchiveApiTest` | 三种内容来源归一打包（blobId / `src` dataURL / 内嵌 `content`）、解压落盘、GBK 条目名转码、zip slip 拦截、同名冲突显式拒绝、`MAX_ENTRIES`/`MAX_TOTAL_BYTES` 与配额校验——10 用例 |
 | `SessionEventTest` | 会话事件流水追加与 200 条上限淘汰 |
 | `StorageConfigCacheTest` | 配置两级缓存、驱动切换后缓存失效 |
+| `DesktopIconApiTest` | 桌面图标 CRUD、类型枚举与 target 协议防护校验、模型 getDesktopItems/toDesktopItem、图标文件上传（合法/非法扩展名/超大文件） |
 
 ### 8.4 约定
 
