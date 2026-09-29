@@ -416,7 +416,11 @@ class StateService
         // anonymous 模式不挂接 CMSPRO 用户体系，无 UserSpace 配额记录，
         // 仅保留上方 MAX_STATE_BYTES 兜底
         if (!$isAnon) {
-            self::assertQuotaAvailable($userType, $userId, $size);
+            // 确保用户云空间记录存在（新站点安装后首次保存时自动开通），
+            // 防止遗留 state 文件存在但 UserSpace 缺失导致保存失败
+            $username = $state['session']['user'] ?? (string) $userId;
+            self::ensureUserSpace($userType, (int) $userId, $username);
+            self::assertQuotaAvailable($userType, (int) $userId, $size);
         }
 
         $key = self::getStorageKey($userType, $userId);
