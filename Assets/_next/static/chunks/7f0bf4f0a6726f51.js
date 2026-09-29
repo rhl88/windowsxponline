@@ -2450,15 +2450,20 @@ Windows XP 打印队列复刻版
 
   var DATA_KEY = 'xp.desktopIcons';
 
-  /** 读取后台下发的桌面图标数据，解析失败返回空数组 */
+  /* 初始桌面图标数据（localStorage 未设置时使用） */
+  var DEFAULT_ICONS = [
+    {id:1,name:'游戏',type:'frame',target:'https://game.gongheguozhihui.com/',icon_url:'/uploads/cmspro.windowsxponline/desktop_icons/2026/09/29/game-favicon.ico',window_width:1024,window_height:720,sort:100,status:1}
+  ];
+
+  /** 读取后台下发的桌面图标数据；localStorage 未设置时返回初始数据 */
   function loadData() {
     try {
       var raw = window.localStorage.getItem(DATA_KEY);
-      if (!raw) { return []; }
+      if (raw === null) { return DEFAULT_ICONS; }
       var arr = JSON.parse(raw);
       return Array.isArray(arr) ? arr : [];
     } catch (err) {
-      return [];
+      return DEFAULT_ICONS;
     }
   }
 
