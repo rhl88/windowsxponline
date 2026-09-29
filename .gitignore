@@ -1,0 +1,31 @@
+# 版本控制忽略清单
+# 注意：本应用的 doc/、Tests/、Frontend/ 需要纳入版本控制（对外发布的完整源码）
+# 本文件与 .exportignore（部署打包排除清单）职责不同，请勿混淆
+
+# 前端依赖与构建缓存
+node_modules/
+.next/
+out/
+
+# 环境与本地配置
+.env
+.env.*
+*.local
+
+# IDE 配置
+.idea/
+.vscode/
+
+# 系统与编辑器临时文件
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+
+# 日志与临时产物
+*.log
+*.tmp
+*.bak
+npm-debug.log*
+yarn-error.log*

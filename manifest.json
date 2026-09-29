@@ -1,0 +1,237 @@
+{
+    "id": "cmspro.windowsxponline",
+    "name": "Windows XP 在线版",
+    "description": "基于 Windows XP WebOS 的在线版应用，支持单机版（仅超管）和在线版（多用户）双模式，可配置本地存储或云存储.",
+    "version": "1.1.0",
+    "author": "CmsPro",
+    "require": {
+        "php": ">=8.1",
+        "cmspro": ">=5.0.0"
+    },
+    "providers": [
+        "ServiceProvider"
+    ],
+    "install": "Install",
+    "menus": [
+        {
+            "code": "windowsxponline",
+            "title": "XP 在线版",
+            "icon": "fa fa-desktop",
+            "order": 100,
+            "children": [
+                {
+                    "code": "windowsxponline_desktop",
+                    "title": "桌面入口",
+                    "icon": "fa fa-desktop",
+                    "path": "/admin/cmspro/windowsxponline",
+                    "order": 1,
+                    "open_type": "_blank"
+                },
+                {
+                    "code": "windowsxponline_settings",
+                    "title": "应用设置",
+                    "icon": "fa fa-cog",
+                    "path": "/admin/cmspro/windowsxponline/settings",
+                    "order": 2
+                },
+                {
+                    "code": "windowsxponline_spaces",
+                    "title": "空间管理",
+                    "icon": "fa fa-hdd-o",
+                    "path": "/admin/cmspro/windowsxponline/spaces",
+                    "order": 3
+                }
+            ]
+        }
+    ],
+    "user_menus": [
+        {
+            "code": "my_windowsxp",
+            "title": "我的 XP 桌面",
+            "icon": "fa fa-desktop",
+            "order": 50,
+            "children": [
+                {
+                    "code": "my_windowsxp_desktop",
+                    "title": "进入桌面",
+                    "icon": "fa fa-desktop",
+                    "path": "/user/cmspro/windowsxponline",
+                    "order": 1
+                }
+            ]
+        }
+    ],
+    "permissions": [
+        {
+            "code": "cmspro.windowsxponline.access",
+            "name": "访问 XP 在线版"
+        },
+        {
+            "code": "cmspro.windowsxponline.settings",
+            "name": "管理 XP 应用设置"
+        },
+        {
+            "code": "cmspro.windowsxponline.spaces",
+            "name": "管理用户空间"
+        }
+    ],
+    "config_groups": [
+        {
+            "name": "general",
+            "title": "基础设置",
+            "items": [
+                {
+                    "name": "access_mode",
+                    "title": "访问模式",
+                    "type": "select",
+                    "value": "online",
+                    "options": [
+                        { "label": "在线版（多用户）", "value": "online" },
+                        { "label": "单机版（仅超管）", "value": "standalone" },
+                        { "label": "免登录版（Windows 帐户）", "value": "anonymous" }
+                    ],
+                    "tips": "在线版：所有注册用户可登录使用；单机版：仅超级管理员私有使用；免登录版：无需注册登录，访问者以 Windows 帐户名+密码登录桌面，各帐户桌面数据独立"
+                },
+                {
+                    "name": "access_path",
+                    "title": "访问路径",
+                    "type": "text",
+                    "value": "",
+                    "tips": "自定义桌面访问入口路径（如 /my-xp），保存后可通过该路径打开 XP 桌面，勿与系统已有路径（/admin、/user、/api 开头）冲突；留空则通过默认菜单路径访问"
+                },
+                {
+                    "name": "bind_domain",
+                    "title": "绑定域名",
+                    "type": "text",
+                    "value": "",
+                    "tips": "绑定独立域名访问入口（纯域名格式，如 xp.example.com，无需 http/https 前缀），需在服务器将该域名解析/反代到本站；保存后可通过该域名直接打开 XP 桌面"
+                },
+                {
+                    "name": "xp_admin_password",
+                    "title": "XP 管理员密码",
+                    "type": "text",
+                    "value": "",
+                    "tips": "前台 XP 桌面 Administrator 帐户的登录密码，后台明文回显便于查看（数据库仍加密存储）；留空则沿用初始默认密码"
+                },
+                {
+                    "name": "xp_quicklaunch_defaults",
+                    "title": "快速启动默认项",
+                    "type": "text",
+                    "value": "showdesktop,ie,wmp",
+                    "tips": "任务栏快速启动区的默认快捷方式（逗号分隔 appId），对新初始化用户与新建帐户生效；showdesktop（显示桌面）为固定必选项，老用户仅自动补齐该项"
+                },
+                {
+                    "name": "xp_ie_homepage",
+                    "title": "IE 默认主页",
+                    "type": "text",
+                    "value": "https://www.cmspro.cn/",
+                    "tips": "桌面 Internet Explorer 的默认主页，可填域名（www.cmspro.cn）或完整网址；保存后强制同步到所有用户的 IE 主页，用户之后在桌面「Internet 选项」中的自定义不受影响；留空恢复出厂默认"
+                },
+                {
+                    "name": "xp_guest_enabled",
+                    "title": "游客功能",
+                    "type": "select",
+                    "value": "0",
+                    "options": [
+                        { "label": "关闭（登录页不显示 Guest）", "value": "0" },
+                        { "label": "开启（允许 Guest 登录体验）", "value": "1" }
+                    ],
+                    "tips": "控制前台登录页是否展示内置 Guest 游客帐户，默认关闭；关闭时同时拒绝 Guest 登录请求，Guest 为只读体验帐户，其写入均为临时数据不做保存"
+                }
+            ]
+        },
+        {
+            "name": "storage",
+            "title": "存储设置",
+            "items": [
+                {
+                    "name": "storage_driver",
+                    "title": "存储方式",
+                    "type": "select",
+                    "value": "local",
+                    "options": [
+                        { "label": "本地存储", "value": "local" },
+                        { "label": "阿里云 OSS", "value": "oss" },
+                        { "label": "腾讯云 COS", "value": "cos" }
+                    ],
+                    "tips": "选择用户数据的存储方式"
+                },
+                {
+                    "name": "default_space_quota",
+                    "title": "默认空间配额(MB)",
+                    "type": "number",
+                    "value": "100",
+                    "tips": "新用户默认分配的硬盘空间，单位：MB"
+                },
+                {
+                    "name": "oss_access_key",
+                    "title": "OSS AccessKey",
+                    "type": "password",
+                    "value": "",
+                    "tips": "阿里云 OSS 访问密钥 ID"
+                },
+                {
+                    "name": "oss_access_secret",
+                    "title": "OSS AccessSecret",
+                    "type": "password",
+                    "value": "",
+                    "tips": "阿里云 OSS 访问密钥 Secret"
+                },
+                {
+                    "name": "oss_bucket",
+                    "title": "OSS Bucket",
+                    "type": "text",
+                    "value": "",
+                    "tips": "阿里云 OSS 存储空间名"
+                },
+                {
+                    "name": "oss_endpoint",
+                    "title": "OSS Endpoint",
+                    "type": "text",
+                    "value": "",
+                    "tips": "阿里云 OSS 访问端点，如 oss-cn-hangzhou.aliyuncs.com"
+                },
+                {
+                    "name": "cos_secret_id",
+                    "title": "COS SecretId",
+                    "type": "password",
+                    "value": "",
+                    "tips": "腾讯云 COS 访问密钥 ID"
+                },
+                {
+                    "name": "cos_secret_key",
+                    "title": "COS SecretKey",
+                    "type": "password",
+                    "value": "",
+                    "tips": "腾讯云 COS 访问密钥 Key"
+                },
+                {
+                    "name": "cos_bucket",
+                    "title": "COS Bucket",
+                    "type": "text",
+                    "value": "",
+                    "tips": "腾讯云 COS 存储桶名，如 xp-online-1234567890"
+                },
+                {
+                    "name": "cos_region",
+                    "title": "COS Region",
+                    "type": "text",
+                    "value": "",
+                    "tips": "腾讯云 COS 地域，如 ap-guangzhou"
+                }
+            ]
+        }
+    ],
+    "runtime_files": [
+        {
+            "key": "windowsxponline_data",
+            "name": "XP 用户数据",
+            "dir": "windowsxponline",
+            "type": "data",
+            "description": "用户 XP 桌面状态数据（文件系统快照、设置等），按用户 ID 隔离存储",
+            "cleanable": true,
+            "strategy": "manual",
+            "protected": false
+        }
+    ]
+}
